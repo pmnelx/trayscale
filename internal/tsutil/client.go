@@ -7,6 +7,9 @@ import (
 	"io"
 	"log/slog"
 	"net/netip"
+	"os"
+	"os/exec"
+	"strings"
 
 	"tailscale.com/client/local"
 	"tailscale.com/client/tailscale/apitype"
@@ -424,6 +427,31 @@ func GetProfileStatus(ctx context.Context) (ipn.LoginProfile, []ipn.LoginProfile
 
 func SwitchProfile(ctx context.Context, id ipn.ProfileID) error {
 	return localClient.SwitchProfile(ctx, id)
+}
+
+// CanRestartDaemon reports whether [RestartDaemon] can work. A sandboxed
+// app can't reach systemd, and a restart would replace the socket's
+// directory, cutting the app off from the daemon until it's restarted.
+func CanRestartDaemon() bool {
+	if _, err := os.Stat("/.flatpak-info"); err == nil {
+		return false
+	}
+	_, err := exec.LookPath("systemctl")
+	return err == nil
+}
+
+// RestartDaemon restarts tailscaled, which drops all Tailscale
+// connections for a moment. It blocks while polkit asks the user to
+// authenticate.
+func RestartDaemon(ctx context.Context) error {
+	out, err := exec.CommandContext(ctx, "systemctl", "restart", "tailscaled.service").CombinedOutput()
+	if err != nil {
+		if msg := strings.TrimSpace(string(out)); msg != "" {
+			return fmt.Errorf("%w: %s", err, msg)
+		}
+		return err
+	}
+	return nil
 }
 
 func StartLogin(ctx context.Context) error {

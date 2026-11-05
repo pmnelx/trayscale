@@ -40,5 +40,6 @@ Preconditions:
 - A user-owned `trayscale --hide-window` can sit on the session bus at the same time. Doctor the isolated run, not that process.
 - Under `TRAYSCALE_PRIVATE=1` a profile has no tailnet name, so rows show only `profile@example.com`.
 - The dropdown holds profile status back during a switch, so the `Not Connected` page does not appear unless the new profile settles offline or stays connecting for 10 seconds.
+- `Restart Tailscale Daemon...` in the main menu restarts the real `tailscaled` and is hidden in Flatpak. Do not activate it in a routine proof.
 - Offline peers disappear from the sidebar if `show-offline-peers` is off. Launch uses in-memory defaults, so the key starts on. `action show-offline-peers` flips it; run it an even number of times so later recipes see offline peers.
 - While a search query is active the sidebar has no section titles. Close search before you check `sidebar-sections`.

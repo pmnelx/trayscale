@@ -371,3 +371,21 @@ msgstr "Los perfiles no están disponibles"
 
 msgid "Active"
 msgstr "Activo"
+
+msgid "Restart Tailscale Daemon?"
+msgstr "¿Reiniciar el demonio de Tailscale?"
+
+msgid "All Tailscale connections on this machine will drop for a moment. You may be asked for an administrator password."
+msgstr "Todas las conexiones de Tailscale de este equipo se interrumpirán por un momento. Es posible que se le pida una contraseña de administrador."
+
+msgid "Failed to restart Tailscale daemon: %v"
+msgstr "No se pudo reiniciar el demonio de Tailscale: %v"
+
+msgid "Tailscale daemon restarted"
+msgstr "Se reinició el demonio de Tailscale"
+
+msgid "_Restart Tailscale Daemon..."
+msgstr "_Reiniciar el demonio de Tailscale..."
+
+msgid "_Restart"
+msgstr "_Reiniciar"

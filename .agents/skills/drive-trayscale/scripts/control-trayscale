@@ -37,6 +37,7 @@ CHECK_FAKE = Path(__file__).resolve().parent / "check-fake-tailnet"
 # them; recipes must not call them unless the feature file says so.
 MUTATING_ACTIONS = {
     "use_exit_node",
+    "restart_daemon",
     "change_control_server",
     "admin_dashboard",
     "login",

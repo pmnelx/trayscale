@@ -358,3 +358,32 @@ func TestFinishedProfileSwitchIgnoresLateResponse(t *testing.T) {
 	// A late timer or response for a finished switch does nothing.
 	a.profileSwitchReturned(s, nil, errors.New("late"))
 }
+
+func TestRestartDaemon(t *testing.T) {
+	for _, want := range []error{nil, errors.New("Authentication failed <&>")} {
+		release := make(chan struct{})
+		calls := 0
+		a := profileTestApp(t, nil)
+		a.restartDaemonFunc = func(context.Context) error {
+			calls++
+			<-release
+			return want
+		}
+
+		a.restartDaemon(t.Context())
+		a.restartDaemon(t.Context()) // Ignored, as one is in progress.
+		iterateFor(50 * time.Millisecond)
+		if !a.restartingDaemon || !a.win.WorkSpinner.GetVisible() {
+			t.Fatal("restart doesn't show as in progress")
+		}
+
+		close(release)
+		iterateFor(50 * time.Millisecond)
+		if calls != 1 {
+			t.Fatalf("restarted %d times, want 1", calls)
+		}
+		if a.restartingDaemon || a.win.WorkSpinner.GetVisible() {
+			t.Fatal("restart still shows as in progress")
+		}
+	}
+}

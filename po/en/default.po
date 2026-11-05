@@ -372,3 +372,21 @@ msgstr "Profiles are unavailable"
 
 msgid "Active"
 msgstr "Active"
+
+msgid "Restart Tailscale Daemon?"
+msgstr "Restart Tailscale Daemon?"
+
+msgid "All Tailscale connections on this machine will drop for a moment. You may be asked for an administrator password."
+msgstr "All Tailscale connections on this machine will drop for a moment. You may be asked for an administrator password."
+
+msgid "Failed to restart Tailscale daemon: %v"
+msgstr "Failed to restart Tailscale daemon: %v"
+
+msgid "Tailscale daemon restarted"
+msgstr "Tailscale daemon restarted"
+
+msgid "_Restart Tailscale Daemon..."
+msgstr "_Restart Tailscale Daemon..."
+
+msgid "_Restart"
+msgstr "_Restart"

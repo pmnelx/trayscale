@@ -51,6 +51,11 @@ type App struct {
 	// switchProfileFunc is a test seam. It's nil in normal use, in which
 	// case switching uses the daemon.
 	switchProfileFunc func(context.Context, ipn.ProfileID) (*tsutil.ProfileStatus, error)
+	// restartingDaemon is whether a daemon restart is in progress.
+	restartingDaemon bool
+	// restartDaemonFunc is a test seam. It's nil in normal use, in which
+	// case restarting uses the system's service manager.
+	restartDaemonFunc func(context.Context) error
 	// trayDone stops the goroutine started by startTray.
 	trayDone context.CancelFunc
 
@@ -455,6 +460,9 @@ func (a *App) onAppActivate(ctx context.Context) {
 	}
 
 	a.addAction(gio.NewSimpleAction("change_control_server", nil), func(*glib.Variant) { a.showChangeControlServer(ctx) })
+	if tsutil.CanRestartDaemon() {
+		a.addAction(gio.NewSimpleAction("restart_daemon", nil), func(*glib.Variant) { a.confirmRestartDaemon(ctx) })
+	}
 	a.addAction(gio.NewSimpleAction("preferences", nil), func(*glib.Variant) { a.showPreferences() })
 	a.addAction(gio.NewSimpleAction("admin_dashboard", nil), func(*glib.Variant) { a.launchURI(tsutil.AdminDashboardURL) })
 	a.addAction(gio.NewSimpleAction("about", nil), func(*glib.Variant) { a.showAbout() })
@@ -537,6 +545,51 @@ func (a *App) login(ctx context.Context) {
 				}
 			}
 		}
+	}()
+}
+
+// confirmRestartDaemon offers to restart tailscaled.
+func (a *App) confirmRestartDaemon(ctx context.Context) {
+	Confirmation{
+		Heading: locale.Get("Restart Tailscale Daemon?"),
+		Body:    locale.Get("All Tailscale connections on this machine will drop for a moment. You may be asked for an administrator password."),
+		Accept:  locale.Get("_Restart"),
+		Reject:  locale.Get("_Cancel"),
+	}.Show(a, func(accept bool) {
+		if accept {
+			a.restartDaemon(ctx)
+		}
+	})
+}
+
+// restartDaemon restarts tailscaled and reports the result in a toast.
+// The poller reconnects by itself afterwards. It doesn't block, but it
+// must be called from the main thread.
+func (a *App) restartDaemon(ctx context.Context) {
+	if a.restartingDaemon {
+		return
+	}
+	a.restartingDaemon = true
+	a.spin()
+
+	do := a.restartDaemonFunc
+	if do == nil {
+		do = tsutil.RestartDaemon
+	}
+	go func() {
+		// Long enough for the user to answer the password prompt.
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+
+		err := do(ctx)
+		a.stopSpin()
+		gutil.IdleAdd(func() { a.restartingDaemon = false })
+		if err != nil {
+			slog.Error("restart daemon", "err", err)
+			a.toast(locale.Get("Failed to restart Tailscale daemon: %v", err))
+			return
+		}
+		a.toast(locale.Get("Tailscale daemon restarted"))
 	}()
 }
 

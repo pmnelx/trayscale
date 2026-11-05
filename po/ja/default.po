@@ -371,3 +371,21 @@ msgstr "プロファイルを利用できません"
 
 msgid "Active"
 msgstr "有効"
+
+msgid "Restart Tailscale Daemon?"
+msgstr "Tailscale デーモンを再起動しますか?"
+
+msgid "All Tailscale connections on this machine will drop for a moment. You may be asked for an administrator password."
+msgstr "このマシンのすべての Tailscale 接続が一時的に切断されます。管理者パスワードを求められる場合があります。"
+
+msgid "Failed to restart Tailscale daemon: %v"
+msgstr "Tailscale デーモンの再起動に失敗しました: %v"
+
+msgid "Tailscale daemon restarted"
+msgstr "Tailscale デーモンを再起動しました"
+
+msgid "_Restart Tailscale Daemon..."
+msgstr "Tailscale デーモンを再起動(_R)..."
+
+msgid "_Restart"
+msgstr "再起動(_R)"
