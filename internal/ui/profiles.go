@@ -92,9 +92,15 @@ func (a *App) holdForProfileSwitch(status *tsutil.IPNStatus) bool {
 // or another switch is in progress. Its result shows up in the UI. It
 // doesn't block, but it must be called from the main thread.
 func (a *App) switchProfile(ctx context.Context, id ipn.ProfileID) {
-	if a.profileSwitch != nil || id == a.activeProfile {
+	if a.profileSwitch != nil {
+		slog.Info("ignoring profile switch: another is in progress", "id", id, "target", a.profileSwitch.target)
 		return
 	}
+	if id == a.activeProfile {
+		slog.Info("ignoring profile switch: already active", "id", id)
+		return
+	}
+	slog.Info("switching profile", "id", id, "from", a.activeProfile)
 
 	s := &profileSwitch{target: id, from: a.ipnState}
 	a.profileSwitch = s
@@ -181,23 +187,20 @@ func (a *App) finishProfileSwitch(s *profileSwitch) {
 	}
 }
 
-// profileItem is one entry of the profile dropdown. Active is included
-// so that a change of active profile rebinds the affected rows.
+// profileItem is one entry of the profile dropdown. Which entry is
+// active isn't part of it, so that switching profiles doesn't change the
+// dropdown's model.
 type profileItem struct {
 	ID      ipn.ProfileID
 	Tailnet string
 	Account string
-	Label   string
-	Active  bool
 }
 
-func newProfileItem(p ipn.LoginProfile, active ipn.ProfileID) profileItem {
+func newProfileItem(p ipn.LoginProfile) profileItem {
 	return profileItem{
 		ID:      p.ID,
 		Tailnet: tsutil.ProfileTailnet(p),
 		Account: tsutil.ProfileAccount(p),
-		Label:   tsutil.ProfileLabel(p),
-		Active:  p.ID == active,
 	}
 }
 
@@ -225,6 +228,8 @@ func compareProfileItems(a, b profileItem) int {
 // profileSelector is the state of the main window's profile dropdown.
 type profileSelector struct {
 	list     *gobj.List[profileItem]
+	button   *profileFactory
+	popup    *profileFactory
 	all      []ipn.LoginProfile
 	current  ipn.LoginProfile
 	active   ipn.ProfileID
@@ -247,13 +252,14 @@ func (win *MainWindow) initProfiles() {
 	win.profiles.list = gobj.NewList(compareProfileItems)
 	win.ProfileDropDown.SetModel(win.profiles.list.Model())
 
-	button := newProfileFactory(false)
-	win.ProfileDropDown.SetFactory(&button.ListItemFactory)
-	button.Unref()
+	// The dropdown keeps the factories alive, and so what they connect.
+	win.profiles.button = win.newProfileFactory(false)
+	win.ProfileDropDown.SetFactory(&win.profiles.button.factory.ListItemFactory)
+	win.profiles.button.factory.Unref()
 
-	popup := newProfileFactory(true)
-	win.ProfileDropDown.SetListFactory(&popup.ListItemFactory)
-	popup.Unref()
+	win.profiles.popup = win.newProfileFactory(true)
+	win.ProfileDropDown.SetListFactory(&win.profiles.popup.factory.ListItemFactory)
+	win.profiles.popup.factory.Unref()
 
 	gutil.ConnectNotify(win.ProfileDropDown, "selected-item", func() {
 		if win.profiles.updating {
@@ -266,7 +272,9 @@ func (win *MainWindow) initProfiles() {
 		}
 		defer sel.Unref()
 
-		win.app.switchProfile(context.Background(), gobj.Item[profileItem](sel).ID)
+		id := gobj.Item[profileItem](sel).ID
+		slog.Info("profile selected in dropdown", "id", id, "active", win.profiles.active)
+		win.app.switchProfile(context.Background(), id)
 		// If it didn't start a switch, the selection has to go back.
 		win.syncProfiles()
 	})
@@ -301,7 +309,7 @@ func (win *MainWindow) syncProfiles() {
 	items := make([]profileItem, 0, len(p.all)+1)
 	listed := false
 	for _, profile := range p.all {
-		items = append(items, newProfileItem(profile, p.active))
+		items = append(items, newProfileItem(profile))
 		listed = listed || profile.ID == p.active
 	}
 	// The daemon doesn't list a profile until it has logged in. A
@@ -309,9 +317,13 @@ func (win *MainWindow) syncProfiles() {
 	// selected, so without this the first profile would look active and
 	// couldn't be switched to.
 	if !listed && len(p.all) > 0 {
-		items = append(items, newProfileItem(p.current, p.active))
+		items = append(items, newProfileItem(p.current))
 	}
 	p.list.Set(items)
+	// GTK keeps a row bound when its item stays the same, so rows don't
+	// redraw by themselves.
+	p.button.refresh()
+	p.popup.refresh()
 
 	tooltip := ""
 	if len(p.all) > 0 {
@@ -345,9 +357,41 @@ func (win *MainWindow) syncProfiles() {
 
 // profileRow holds a list item's widgets, borrowed from the item.
 type profileRow struct {
+	item     *gtk.ListItem
 	title    *gtk.Label
 	subtitle *gtk.Label
 	check    *gtk.Image
+}
+
+// profileFactory creates and updates profile dropdown rows.
+type profileFactory struct {
+	win     *MainWindow
+	factory *gtk.SignalListItemFactory
+	rows    map[uintptr]*profileRow
+}
+
+// refresh updates the rows that are showing an item.
+func (f *profileFactory) refresh() {
+	for _, row := range f.rows {
+		f.fill(row)
+	}
+}
+
+func (f *profileFactory) fill(row *profileRow) {
+	obj := row.item.GetItem()
+	if obj == nil {
+		return
+	}
+	defer obj.Unref()
+	item := gobj.Item[profileItem](obj)
+
+	row.title.SetText(item.title())
+	if row.subtitle == nil {
+		return
+	}
+	row.subtitle.SetText(item.subtitle())
+	row.subtitle.SetVisible(item.subtitle() != "")
+	row.check.SetVisible(item.ID == f.win.profiles.active)
 }
 
 func newProfileLabel() *gtk.Label {
@@ -356,19 +400,22 @@ func newProfileLabel() *gtk.Label {
 	return label
 }
 
-// newProfileFactory returns a new factory, owned by the caller, for
-// profile dropdown rows. Rows in the popup show the whole profile and
-// mark the active one, while the row on the button only has room for
-// the title.
-func newProfileFactory(popup bool) *gtk.SignalListItemFactory {
-	rows := make(map[uintptr]*profileRow)
+// newProfileFactory returns a new factory, whose GTK object is owned by
+// the caller, for profile dropdown rows. Rows in the popup show the whole
+// profile and mark the active one, while the row on the button only has
+// room for the title.
+func (win *MainWindow) newProfileFactory(popup bool) *profileFactory {
+	f := &profileFactory{
+		win:     win,
+		factory: gtk.NewSignalListItemFactory(),
+		rows:    make(map[uintptr]*profileRow),
+	}
 
-	f := gtk.NewSignalListItemFactory()
-	gutil.Connect(f, f.ConnectSetup, func(_ gtk.SignalListItemFactory, p uintptr) {
-		row := new(profileRow)
-		rows[p] = row
-
+	gutil.Connect(f.factory, f.factory.ConnectSetup, func(_ gtk.SignalListItemFactory, p uintptr) {
 		item := gtk.ListItemNewFromInternalPtr(p)
+		row := &profileRow{item: item}
+		f.rows[p] = row
+
 		row.title = newProfileLabel()
 		if !popup {
 			// Keep enough of the name to tell tailnets apart. An ellipsized
@@ -404,22 +451,11 @@ func newProfileFactory(popup bool) *gtk.SignalListItemFactory {
 		item.SetChild(&box.Widget)
 		box.Unref()
 	})
-	gutil.Connect(f, f.ConnectBind, func(_ gtk.SignalListItemFactory, p uintptr) {
-		obj := gtk.ListItemNewFromInternalPtr(p).GetItem()
-		defer obj.Unref()
-		item := gobj.Item[profileItem](obj)
-
-		row := rows[p]
-		row.title.SetText(item.title())
-		if !popup {
-			return
-		}
-		row.subtitle.SetText(item.subtitle())
-		row.subtitle.SetVisible(item.subtitle() != "")
-		row.check.SetVisible(item.Active)
+	gutil.Connect(f.factory, f.factory.ConnectBind, func(_ gtk.SignalListItemFactory, p uintptr) {
+		f.fill(f.rows[p])
 	})
-	gutil.Connect(f, f.ConnectTeardown, func(_ gtk.SignalListItemFactory, p uintptr) {
-		delete(rows, p)
+	gutil.Connect(f.factory, f.factory.ConnectTeardown, func(_ gtk.SignalListItemFactory, p uintptr) {
+		delete(f.rows, p)
 	})
 	return f
 }

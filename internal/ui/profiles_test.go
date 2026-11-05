@@ -8,6 +8,7 @@ import (
 
 	"codeberg.org/puregotk/puregotk/v4/adw"
 	"codeberg.org/puregotk/puregotk/v4/gio"
+	"deedles.dev/trayscale/internal/gobj"
 	"deedles.dev/trayscale/internal/tsutil"
 	"tailscale.com/ipn"
 )
@@ -125,12 +126,6 @@ func TestProfileDropDownStates(t *testing.T) {
 	if got := selectedProfile(a.win); got != "b" {
 		t.Fatalf("selected %q, want b", got)
 	}
-	for item := range a.win.profiles.list.All() {
-		if want := item.ID == "b"; item.Active != want {
-			t.Fatalf("%q active = %v, want %v", item.ID, item.Active, want)
-		}
-	}
-
 	a.update(&tsutil.ProfileStatus{Err: errors.New("tailscaled is down")})
 	if dd.GetSensitive() {
 		t.Fatal("sensitive while profiles can't be listed")
@@ -386,4 +381,64 @@ func TestRestartDaemon(t *testing.T) {
 			t.Fatal("restart still shows as in progress")
 		}
 	}
+}
+
+// checkedProfile returns the profile that the popup marks as active.
+func checkedProfile(t *testing.T, win *MainWindow) ipn.ProfileID {
+	t.Helper()
+	var checked []ipn.ProfileID
+	for _, row := range win.profiles.popup.rows {
+		obj := row.item.GetItem()
+		if obj == nil {
+			continue
+		}
+		if row.check.GetVisible() {
+			checked = append(checked, gobj.Item[profileItem](obj).ID)
+		}
+		obj.Unref()
+	}
+	if len(checked) != 1 {
+		t.Fatalf("popup marks %v as active, want one", checked)
+	}
+	return checked[0]
+}
+
+func TestProfilePopupMarksActiveProfile(t *testing.T) {
+	a := profileTestApp(t, nil)
+	a.win.MainWindow.Present()
+	a.update(profileStatus("b", "a", "b"))
+	iterateFor(200 * time.Millisecond)
+
+	// The rows exist from here on, so they have to follow along.
+	a.win.ProfileDropDown.Activate()
+	iterateFor(300 * time.Millisecond)
+	if got := checkedProfile(t, a.win); got != "b" {
+		t.Fatalf("popup marks %q, want b", got)
+	}
+
+	a.update(profileStatus("a", "a", "b"))
+	iterateFor(50 * time.Millisecond)
+	if got := checkedProfile(t, a.win); got != "a" {
+		t.Fatalf("popup marks %q after a switch, want a", got)
+	}
+}
+
+// A profile's rows have to show changes to its name, too.
+func TestProfileRowsFollowRenames(t *testing.T) {
+	a := profileTestApp(t, nil)
+	a.win.MainWindow.Present()
+	status := profileStatus("b", "a", "b")
+	a.update(status)
+	iterateFor(200 * time.Millisecond)
+
+	status.Profiles[1].NetworkProfile.DomainName = "renamed.example"
+	a.update(status)
+	iterateFor(50 * time.Millisecond)
+
+	for _, row := range a.win.profiles.button.rows {
+		if row.title.GetText() == "renamed.example" {
+			return
+		}
+	}
+	t.Fatal("the dropdown's button doesn't show the new name")
 }
