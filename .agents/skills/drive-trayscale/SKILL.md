@@ -28,7 +28,7 @@ Two isolated launches at once are refused. One user instance plus one isolated i
 
 Against a real `tailscaled`, never do these unless the calling skill explicitly allows a specific one:
 
-- activate `use_exit_node`, `login`, `change_control_server`, `admin_dashboard`, `restart_daemon`, or `quit` (all need `--i-mean-it`)
+- activate `use_exit_node`, `login`, `change_control_server`, `admin_dashboard`, `restart_daemon`, `stop_daemon`, or `quit` (all need `--i-mean-it`)
 - click the unnamed header `switch` (connect/disconnect)
 - toggle `Advertise exit node`, `Allow LAN access`, `Accept routes`, `Accept DNS`, or `Use as exit node`
 - advertise or remove routes, or switch profiles

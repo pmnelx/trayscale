@@ -384,8 +384,33 @@ msgstr "No se pudo reiniciar el demonio de Tailscale: %v"
 msgid "Tailscale daemon restarted"
 msgstr "Se reinició el demonio de Tailscale"
 
-msgid "_Restart Tailscale Daemon..."
-msgstr "_Reiniciar el demonio de Tailscale..."
 
 msgid "_Restart"
 msgstr "_Reiniciar"
+
+msgid "Restart the Tailscale daemon, or start it if it's stopped"
+msgstr "Reiniciar el demonio de Tailscale, o iniciarlo si está detenido"
+
+msgid "Stop the Tailscale daemon"
+msgstr "Detener el demonio de Tailscale"
+
+msgid "Restart"
+msgstr "Reiniciar"
+
+msgid "Stop"
+msgstr "Detener"
+
+msgid "Stop Tailscale Daemon?"
+msgstr "¿Detener el demonio de Tailscale?"
+
+msgid "All Tailscale connections on this machine will drop until the daemon is started again. You may be asked for an administrator password."
+msgstr "Todas las conexiones de Tailscale de este equipo se interrumpirán hasta que se vuelva a iniciar el demonio. Es posible que se le pida una contraseña de administrador."
+
+msgid "_Stop"
+msgstr "_Detener"
+
+msgid "Tailscale daemon stopped"
+msgstr "Se detuvo el demonio de Tailscale"
+
+msgid "Failed to stop Tailscale daemon: %v"
+msgstr "No se pudo detener el demonio de Tailscale: %v"

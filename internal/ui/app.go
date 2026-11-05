@@ -51,11 +51,12 @@ type App struct {
 	// switchProfileFunc is a test seam. It's nil in normal use, in which
 	// case switching uses the daemon.
 	switchProfileFunc func(context.Context, ipn.ProfileID) (*tsutil.ProfileStatus, error)
-	// restartingDaemon is whether a daemon restart is in progress.
-	restartingDaemon bool
-	// restartDaemonFunc is a test seam. It's nil in normal use, in which
-	// case restarting uses the system's service manager.
+	// daemonBusy is whether a daemon restart or stop is in progress.
+	daemonBusy bool
+	// restartDaemonFunc and stopDaemonFunc are test seams. They're nil in
+	// normal use, in which case the system's service manager is used.
 	restartDaemonFunc func(context.Context) error
+	stopDaemonFunc    func(context.Context) error
 	// trayDone stops the goroutine started by startTray.
 	trayDone context.CancelFunc
 
@@ -460,8 +461,9 @@ func (a *App) onAppActivate(ctx context.Context) {
 	}
 
 	a.addAction(gio.NewSimpleAction("change_control_server", nil), func(*glib.Variant) { a.showChangeControlServer(ctx) })
-	if tsutil.CanRestartDaemon() {
+	if tsutil.CanControlDaemon() {
 		a.addAction(gio.NewSimpleAction("restart_daemon", nil), func(*glib.Variant) { a.confirmRestartDaemon(ctx) })
+		a.addAction(gio.NewSimpleAction("stop_daemon", nil), func(*glib.Variant) { a.confirmStopDaemon(ctx) })
 	}
 	a.addAction(gio.NewSimpleAction("preferences", nil), func(*glib.Variant) { a.showPreferences() })
 	a.addAction(gio.NewSimpleAction("admin_dashboard", nil), func(*glib.Variant) { a.launchURI(tsutil.AdminDashboardURL) })
@@ -562,20 +564,54 @@ func (a *App) confirmRestartDaemon(ctx context.Context) {
 	})
 }
 
-// restartDaemon restarts tailscaled and reports the result in a toast.
+// confirmStopDaemon offers to stop tailscaled.
+func (a *App) confirmStopDaemon(ctx context.Context) {
+	Confirmation{
+		Heading: locale.Get("Stop Tailscale Daemon?"),
+		Body:    locale.Get("All Tailscale connections on this machine will drop until the daemon is started again. You may be asked for an administrator password."),
+		Accept:  locale.Get("_Stop"),
+		Reject:  locale.Get("_Cancel"),
+	}.Show(a, func(accept bool) {
+		if accept {
+			a.stopDaemon(ctx)
+		}
+	})
+}
+
+// restartDaemon restarts tailscaled, reporting the result in a toast.
 // The poller reconnects by itself afterwards. It doesn't block, but it
 // must be called from the main thread.
 func (a *App) restartDaemon(ctx context.Context) {
-	if a.restartingDaemon {
-		return
-	}
-	a.restartingDaemon = true
-	a.spin()
-
 	do := a.restartDaemonFunc
 	if do == nil {
 		do = tsutil.RestartDaemon
 	}
+	a.controlDaemon(ctx, do, locale.Get("Tailscale daemon restarted"), func(err error) string {
+		return locale.Get("Failed to restart Tailscale daemon: %v", err)
+	})
+}
+
+// stopDaemon stops tailscaled, reporting the result in a toast. It
+// doesn't block, but it must be called from the main thread.
+func (a *App) stopDaemon(ctx context.Context) {
+	do := a.stopDaemonFunc
+	if do == nil {
+		do = tsutil.StopDaemon
+	}
+	a.controlDaemon(ctx, do, locale.Get("Tailscale daemon stopped"), func(err error) string {
+		return locale.Get("Failed to stop Tailscale daemon: %v", err)
+	})
+}
+
+// controlDaemon runs do unless a previous call is still running, showing
+// that it's busy until it's done.
+func (a *App) controlDaemon(ctx context.Context, do func(context.Context) error, done string, failed func(error) string) {
+	if a.daemonBusy {
+		return
+	}
+	a.setDaemonBusy(true)
+	a.spin()
+
 	go func() {
 		// Long enough for the user to answer the password prompt.
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -583,14 +619,21 @@ func (a *App) restartDaemon(ctx context.Context) {
 
 		err := do(ctx)
 		a.stopSpin()
-		gutil.IdleAdd(func() { a.restartingDaemon = false })
+		gutil.IdleAdd(func() { a.setDaemonBusy(false) })
 		if err != nil {
-			slog.Error("restart daemon", "err", err)
-			a.toast(locale.Get("Failed to restart Tailscale daemon: %v", err))
+			slog.Error("control daemon", "err", err)
+			a.toast(failed(err))
 			return
 		}
-		a.toast(locale.Get("Tailscale daemon restarted"))
+		a.toast(done)
 	}()
+}
+
+func (a *App) setDaemonBusy(busy bool) {
+	a.daemonBusy = busy
+	if a.win != nil {
+		a.win.DaemonButtons.SetSensitive(!busy)
+	}
 }
 
 // launchURI opens uri with the default handler.

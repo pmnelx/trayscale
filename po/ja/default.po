@@ -384,8 +384,33 @@ msgstr "Tailscale デーモンの再起動に失敗しました: %v"
 msgid "Tailscale daemon restarted"
 msgstr "Tailscale デーモンを再起動しました"
 
-msgid "_Restart Tailscale Daemon..."
-msgstr "Tailscale デーモンを再起動(_R)..."
 
 msgid "_Restart"
 msgstr "再起動(_R)"
+
+msgid "Restart the Tailscale daemon, or start it if it's stopped"
+msgstr "Tailscale デーモンを再起動します (停止中の場合は起動します)"
+
+msgid "Stop the Tailscale daemon"
+msgstr "Tailscale デーモンを停止します"
+
+msgid "Restart"
+msgstr "再起動"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Stop Tailscale Daemon?"
+msgstr "Tailscale デーモンを停止しますか?"
+
+msgid "All Tailscale connections on this machine will drop until the daemon is started again. You may be asked for an administrator password."
+msgstr "デーモンを再度起動するまで、このマシンのすべての Tailscale 接続が切断されます。管理者パスワードを求められる場合があります。"
+
+msgid "_Stop"
+msgstr "停止(_S)"
+
+msgid "Tailscale daemon stopped"
+msgstr "Tailscale デーモンを停止しました"
+
+msgid "Failed to stop Tailscale daemon: %v"
+msgstr "Tailscale デーモンの停止に失敗しました: %v"

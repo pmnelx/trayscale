@@ -385,8 +385,33 @@ msgstr "Failed to restart Tailscale daemon: %v"
 msgid "Tailscale daemon restarted"
 msgstr "Tailscale daemon restarted"
 
-msgid "_Restart Tailscale Daemon..."
-msgstr "_Restart Tailscale Daemon..."
 
 msgid "_Restart"
 msgstr "_Restart"
+
+msgid "Restart the Tailscale daemon, or start it if it's stopped"
+msgstr "Restart the Tailscale daemon, or start it if it's stopped"
+
+msgid "Stop the Tailscale daemon"
+msgstr "Stop the Tailscale daemon"
+
+msgid "Restart"
+msgstr "Restart"
+
+msgid "Stop"
+msgstr "Stop"
+
+msgid "Stop Tailscale Daemon?"
+msgstr "Stop Tailscale Daemon?"
+
+msgid "All Tailscale connections on this machine will drop until the daemon is started again. You may be asked for an administrator password."
+msgstr "All Tailscale connections on this machine will drop until the daemon is started again. You may be asked for an administrator password."
+
+msgid "_Stop"
+msgstr "_Stop"
+
+msgid "Tailscale daemon stopped"
+msgstr "Tailscale daemon stopped"
+
+msgid "Failed to stop Tailscale daemon: %v"
+msgstr "Failed to stop Tailscale daemon: %v"

@@ -73,13 +73,22 @@ func TestRestartDaemon(t *testing.T) {
 	require.Equal(t, "restart tailscaled.service\n", string(got))
 }
 
+func TestStopDaemon(t *testing.T) {
+	args := fakeSystemctl(t, "exit 0")
+	require.NoError(t, StopDaemon(t.Context()))
+
+	got, err := os.ReadFile(args)
+	require.NoError(t, err)
+	require.Equal(t, "stop tailscaled.service\n", string(got))
+}
+
 func TestRestartDaemonFailure(t *testing.T) {
 	fakeSystemctl(t, `echo "Access denied" >&2; exit 1`)
 	err := RestartDaemon(t.Context())
 	require.ErrorContains(t, err, "Access denied")
 }
 
-func TestCanRestartDaemonNeedsSystemctl(t *testing.T) {
+func TestCanControlDaemonNeedsSystemctl(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
-	require.False(t, CanRestartDaemon())
+	require.False(t, CanControlDaemon())
 }

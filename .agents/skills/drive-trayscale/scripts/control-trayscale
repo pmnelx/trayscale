@@ -38,6 +38,7 @@ CHECK_FAKE = Path(__file__).resolve().parent / "check-fake-tailnet"
 MUTATING_ACTIONS = {
     "use_exit_node",
     "restart_daemon",
+    "stop_daemon",
     "change_control_server",
     "admin_dashboard",
     "login",

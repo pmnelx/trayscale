@@ -384,8 +384,33 @@ msgstr "Falha ao reiniciar o daemon do Tailscale: %v"
 msgid "Tailscale daemon restarted"
 msgstr "Daemon do Tailscale reiniciado"
 
-msgid "_Restart Tailscale Daemon..."
-msgstr "_Reiniciar o daemon do Tailscale..."
 
 msgid "_Restart"
 msgstr "_Reiniciar"
+
+msgid "Restart the Tailscale daemon, or start it if it's stopped"
+msgstr "Reiniciar o daemon do Tailscale, ou iniciá-lo se estiver parado"
+
+msgid "Stop the Tailscale daemon"
+msgstr "Parar o daemon do Tailscale"
+
+msgid "Restart"
+msgstr "Reiniciar"
+
+msgid "Stop"
+msgstr "Parar"
+
+msgid "Stop Tailscale Daemon?"
+msgstr "Parar o daemon do Tailscale?"
+
+msgid "All Tailscale connections on this machine will drop until the daemon is started again. You may be asked for an administrator password."
+msgstr "Todas as conexões do Tailscale nesta máquina cairão até que o daemon seja iniciado novamente. Uma senha de administrador pode ser solicitada."
+
+msgid "_Stop"
+msgstr "_Parar"
+
+msgid "Tailscale daemon stopped"
+msgstr "Daemon do Tailscale parado"
+
+msgid "Failed to stop Tailscale daemon: %v"
+msgstr "Falha ao parar o daemon do Tailscale: %v"

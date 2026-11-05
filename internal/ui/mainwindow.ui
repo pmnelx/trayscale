@@ -126,6 +126,40 @@
                         </property>
                       </object>
                     </child>
+                    <child type="top">
+                      <object class="GtkBox" id="DaemonButtons">
+                        <property name="homogeneous">True</property>
+                        <property name="margin-bottom">6</property>
+                        <property name="margin-end">12</property>
+                        <property name="margin-start">12</property>
+                        <property name="margin-top">6</property>
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="GtkButton">
+                            <property name="action-name">app.restart_daemon</property>
+                            <property name="tooltip-text" translatable="yes">Restart the Tailscale daemon, or start it if it's stopped</property>
+                            <property name="child">
+                              <object class="AdwButtonContent">
+                                <property name="icon-name">view-refresh-symbolic</property>
+                                <property name="label" translatable="yes">Restart</property>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton">
+                            <property name="action-name">app.stop_daemon</property>
+                            <property name="tooltip-text" translatable="yes">Stop the Tailscale daemon</property>
+                            <property name="child">
+                              <object class="AdwButtonContent">
+                                <property name="icon-name">media-playback-stop-symbolic</property>
+                                <property name="label" translatable="yes">Stop</property>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
                   </object>
                 </property>
                 <property name="tag">sidebar</property>

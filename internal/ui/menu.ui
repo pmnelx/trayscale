@@ -20,11 +20,6 @@
         <attribute name="label" translatable="yes">Change Control _Server</attribute>
       </item>
       <item>
-        <attribute name="action">app.restart_daemon</attribute>
-        <attribute name="hidden-when">action-missing</attribute>
-        <attribute name="label" translatable="yes">_Restart Tailscale Daemon...</attribute>
-      </item>
-      <item>
         <attribute name="action">app.preferences</attribute>
         <attribute name="label" translatable="yes">_Preferences</attribute>
       </item>

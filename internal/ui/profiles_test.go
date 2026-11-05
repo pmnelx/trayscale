@@ -354,31 +354,44 @@ func TestFinishedProfileSwitchIgnoresLateResponse(t *testing.T) {
 	a.profileSwitchReturned(s, nil, errors.New("late"))
 }
 
-func TestRestartDaemon(t *testing.T) {
-	for _, want := range []error{nil, errors.New("Authentication failed <&>")} {
-		release := make(chan struct{})
-		calls := 0
-		a := profileTestApp(t, nil)
-		a.restartDaemonFunc = func(context.Context) error {
-			calls++
-			<-release
-			return want
-		}
+func TestControlDaemon(t *testing.T) {
+	ops := map[string]func(*App) (*func(context.Context) error, func(context.Context)){
+		"restart": func(a *App) (*func(context.Context) error, func(context.Context)) {
+			return &a.restartDaemonFunc, a.restartDaemon
+		},
+		"stop": func(a *App) (*func(context.Context) error, func(context.Context)) {
+			return &a.stopDaemonFunc, a.stopDaemon
+		},
+	}
+	for name, op := range ops {
+		for _, want := range []error{nil, errors.New("Authentication failed <&>")} {
+			t.Run(name, func(t *testing.T) {
+				release := make(chan struct{})
+				calls := 0
+				a := profileTestApp(t, nil)
+				seam, run := op(a)
+				*seam = func(context.Context) error {
+					calls++
+					<-release
+					return want
+				}
 
-		a.restartDaemon(t.Context())
-		a.restartDaemon(t.Context()) // Ignored, as one is in progress.
-		iterateFor(50 * time.Millisecond)
-		if !a.restartingDaemon || !a.win.WorkSpinner.GetVisible() {
-			t.Fatal("restart doesn't show as in progress")
-		}
+				run(t.Context())
+				run(t.Context()) // Ignored, as one is in progress.
+				iterateFor(50 * time.Millisecond)
+				if !a.daemonBusy || a.win.DaemonButtons.GetSensitive() || !a.win.WorkSpinner.GetVisible() {
+					t.Fatal("doesn't show as in progress")
+				}
 
-		close(release)
-		iterateFor(50 * time.Millisecond)
-		if calls != 1 {
-			t.Fatalf("restarted %d times, want 1", calls)
-		}
-		if a.restartingDaemon || a.win.WorkSpinner.GetVisible() {
-			t.Fatal("restart still shows as in progress")
+				close(release)
+				iterateFor(50 * time.Millisecond)
+				if calls != 1 {
+					t.Fatalf("ran %d times, want 1", calls)
+				}
+				if a.daemonBusy || !a.win.DaemonButtons.GetSensitive() || a.win.WorkSpinner.GetVisible() {
+					t.Fatal("still shows as in progress")
+				}
+			})
 		}
 	}
 }

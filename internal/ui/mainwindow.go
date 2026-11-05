@@ -56,6 +56,7 @@ type MainWindow struct {
 	PeersSidebar     *adw.ViewSwitcherSidebar
 	PeersStack       *adw.ViewStack
 	WorkSpinner      *adw.Spinner
+	DaemonButtons    *gtk.Box
 	ProfileStack     *gtk.Stack
 	ProfileDropDown  *gtk.DropDown
 	PageMenuButton   *gtk.MenuButton
@@ -96,6 +97,9 @@ func NewMainWindow(app *App) *MainWindow {
 		}
 		win.PageMenuButton.SetSensitive(actions != nil)
 	})
+
+	win.DaemonButtons.SetVisible(tsutil.CanControlDaemon())
+	win.DaemonButtons.SetSensitive(!app.daemonBusy)
 
 	win.initProfiles()
 

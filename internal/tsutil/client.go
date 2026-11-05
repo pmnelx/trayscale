@@ -429,10 +429,11 @@ func SwitchProfile(ctx context.Context, id ipn.ProfileID) error {
 	return localClient.SwitchProfile(ctx, id)
 }
 
-// CanRestartDaemon reports whether [RestartDaemon] can work. A sandboxed
-// app can't reach systemd, and a restart would replace the socket's
-// directory, cutting the app off from the daemon until it's restarted.
-func CanRestartDaemon() bool {
+// CanControlDaemon reports whether [RestartDaemon] and [StopDaemon] can
+// work. A sandboxed app can't reach systemd, and a restart would replace
+// the socket's directory, cutting the app off from the daemon until it's
+// restarted.
+func CanControlDaemon() bool {
 	if _, err := os.Stat("/.flatpak-info"); err == nil {
 		return false
 	}
@@ -440,11 +441,22 @@ func CanRestartDaemon() bool {
 	return err == nil
 }
 
-// RestartDaemon restarts tailscaled, which drops all Tailscale
-// connections for a moment. It blocks while polkit asks the user to
-// authenticate.
+// RestartDaemon restarts tailscaled, or starts it if it's stopped, which
+// drops all Tailscale connections for a moment. It blocks while polkit
+// asks the user to authenticate.
 func RestartDaemon(ctx context.Context) error {
-	out, err := exec.CommandContext(ctx, "systemctl", "restart", "tailscaled.service").CombinedOutput()
+	return systemctl(ctx, "restart")
+}
+
+// StopDaemon stops tailscaled, which drops all Tailscale connections
+// until it's started again. It blocks while polkit asks the user to
+// authenticate.
+func StopDaemon(ctx context.Context) error {
+	return systemctl(ctx, "stop")
+}
+
+func systemctl(ctx context.Context, verb string) error {
+	out, err := exec.CommandContext(ctx, "systemctl", verb, "tailscaled.service").CombinedOutput()
 	if err != nil {
 		if msg := strings.TrimSpace(string(out)); msg != "" {
 			return fmt.Errorf("%w: %s", err, msg)
