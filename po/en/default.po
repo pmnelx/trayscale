@@ -360,3 +360,15 @@ msgstr "_Quit"
 
 msgid "_Set URL"
 msgstr "_Set URL"
+
+msgid "Switching..."
+msgstr "Switching..."
+
+msgid "Failed to switch profile: %v"
+msgstr "Failed to switch profile: %v"
+
+msgid "Profiles are unavailable"
+msgstr "Profiles are unavailable"
+
+msgid "Active"
+msgstr "Active"

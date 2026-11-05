@@ -44,6 +44,13 @@ type App struct {
 	settings      *gio.Settings
 	tray          *tray.Tray
 	activeProfile ipn.ProfileID
+	// ipnState is the state of the most recent status shown.
+	ipnState ipn.State
+	// profileSwitch is the switch in progress, if any.
+	profileSwitch *profileSwitch
+	// switchProfileFunc is a test seam. It's nil in normal use, in which
+	// case switching uses the daemon.
+	switchProfileFunc func(context.Context, ipn.ProfileID) (*tsutil.ProfileStatus, error)
 	// trayDone stops the goroutine started by startTray.
 	trayDone context.CancelFunc
 
@@ -112,6 +119,11 @@ func (a *App) showOperatorDialog() {
 func (a *App) update(status tsutil.Status) {
 	switch status := status.(type) {
 	case *tsutil.IPNStatus:
+		if a.holdForProfileSwitch(status) {
+			return
+		}
+		a.ipnState = status.State
+
 		online := status.Online()
 		if a.online != online {
 			a.online = online
@@ -174,10 +186,14 @@ func (a *App) update(status tsutil.Status) {
 		}
 
 	case *tsutil.ProfileStatus:
-		a.activeProfile = status.Profile.ID
-		if a.tray != nil {
-			a.tray.SetProfiles(status)
-			a.tray.SetActiveProfile(status.Profile.ID)
+		if status.Err != nil {
+			a.tray.SetProfiles(nil)
+		} else {
+			a.activeProfile = status.Profile.ID
+			if a.tray != nil {
+				a.tray.SetProfiles(status)
+				a.tray.SetActiveProfile(status.Profile.ID)
+			}
 		}
 
 		if a.win != nil {
@@ -455,6 +471,9 @@ func (a *App) onAppActivate(ctx context.Context) {
 	a.addAction(gio.NewSimpleAction("login", nil), func(*glib.Variant) { a.login(ctx) })
 
 	a.win = NewMainWindow(a)
+	if a.profileSwitch != nil {
+		a.win.setProfileTarget(a.profileSwitch.target)
+	}
 	gutil.Connect(a.win.MainWindow, a.win.MainWindow.ConnectCloseRequest, func(gtk.Window) bool {
 		win := a.win
 		a.win = nil
@@ -587,20 +606,9 @@ func (a *App) initTray(ctx context.Context) {
 
 		OnProfileSwitch: func(id ipn.ProfileID) {
 			gutil.IdleAdd(func() {
-				if a.tray == nil || id == a.activeProfile {
-					return
+				if a.tray != nil {
+					a.switchProfile(ctx, id)
 				}
-
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-
-				err := tsutil.SwitchProfile(ctx, id)
-				if err != nil {
-					slog.Error("switch profile from tray", "err", err)
-					a.notify(locale.Get("Switch account"), err.Error())
-					return
-				}
-				<-a.poller.Poll()
 			})
 		},
 

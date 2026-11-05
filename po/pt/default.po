@@ -359,3 +359,15 @@ msgstr "_Sair"
 
 msgid "_Set URL"
 msgstr "_Definir URL"
+
+msgid "Switching..."
+msgstr "Alternando..."
+
+msgid "Failed to switch profile: %v"
+msgstr "Falha ao alternar o perfil: %v"
+
+msgid "Profiles are unavailable"
+msgstr "Os perfis não estão disponíveis"
+
+msgid "Active"
+msgstr "Ativo"

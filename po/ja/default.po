@@ -359,3 +359,15 @@ msgstr "終了(_Q)"
 
 msgid "_Set URL"
 msgstr "URLを設定(_S)"
+
+msgid "Switching..."
+msgstr "切り替え中..."
+
+msgid "Failed to switch profile: %v"
+msgstr "プロファイルの切り替えに失敗しました: %v"
+
+msgid "Profiles are unavailable"
+msgstr "プロファイルを利用できません"
+
+msgid "Active"
+msgstr "有効"

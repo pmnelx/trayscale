@@ -2,7 +2,10 @@ package tsutil
 
 import (
 	"cmp"
+	"fmt"
 
+	"deedles.dev/trayscale/internal/metadata"
+	"tailscale.com/ipn"
 	"tailscale.com/tailcfg"
 )
 
@@ -56,4 +59,32 @@ func ComparePeers(p1, p2 tailcfg.NodeView) int {
 		cmp.Compare(i1.Hostname(), i2.Hostname()),
 		cmp.Compare(p1.ID(), p2.ID()),
 	)
+}
+
+// ProfileTailnet returns the name of the tailnet that p belongs to. It
+// is the name that tailscale switch --list shows, and is empty if it
+// isn't known or the app is hiding private information.
+func ProfileTailnet(p ipn.LoginProfile) string {
+	if metadata.Private {
+		return ""
+	}
+	return p.NetworkProfile.DisplayNameOrDefault()
+}
+
+// ProfileAccount returns the name of the account that p belongs to.
+func ProfileAccount(p ipn.LoginProfile) string {
+	if metadata.Private {
+		return "profile@example.com"
+	}
+	return p.Name
+}
+
+// ProfileLabel returns a one-line description of p that tells it apart
+// from profiles with the same account on other tailnets.
+func ProfileLabel(p ipn.LoginProfile) string {
+	tailnet, account := ProfileTailnet(p), ProfileAccount(p)
+	if tailnet != "" && account != "" {
+		return fmt.Sprintf("%v (%v)", tailnet, account)
+	}
+	return cmp.Or(tailnet, account, string(p.ID))
 }

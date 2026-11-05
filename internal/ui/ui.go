@@ -1,28 +1,14 @@
 package ui
 
 import (
-	"cmp"
 	"time"
 
 	"codeberg.org/puregotk/puregotk/v4/adw"
 	"codeberg.org/puregotk/puregotk/v4/gio"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gutil"
 	"deedles.dev/trayscale/internal/tsutil"
 	"tailscale.com/types/opt"
 )
-
-// newStringSorter returns a new sorter, owned by the caller, that sorts
-// GtkStringObjects by their strings. Its callbacks are freed when the
-// sorter is destroyed.
-func newStringSorter() *gtk.CustomSorter {
-	return gutil.NewCustomSorter(func(a, b uintptr) int {
-		return cmp.Compare(
-			gtk.StringObjectNewFromInternalPtr(a).GetString(),
-			gtk.StringObjectNewFromInternalPtr(b).GetString(),
-		)
-	})
-}
 
 // These live for the whole process.
 var (

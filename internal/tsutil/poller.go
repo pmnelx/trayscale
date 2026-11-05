@@ -307,6 +307,7 @@ func (p *Poller) watchProfiles(ctx context.Context, n *notifier) {
 				return
 			}
 			slog.Error("get profile status", "err", err)
+			p.New(&ProfileStatus{Err: err})
 			goto wait
 		}
 
@@ -459,7 +460,9 @@ func (s *IPNStatus) applyInitialStatus(st *ipnstate.Status) {
 	s.ensurePeers()
 	clear(s.Peers)
 	for _, peer := range st.Peer {
-		if peer == nil {
+		// A peer has no ID if only the WireGuard engine knows about it, as
+		// when it's left over from the previous profile after a switch.
+		if peer == nil || peer.ID == "" {
 			continue
 		}
 		s.Peers[peer.ID] = nodeViewFromPeerStatus(peer, suffix)
@@ -660,9 +663,13 @@ type FileStatus struct {
 
 func (*FileStatus) status() {}
 
+// ProfileStatus is the daemon's list of login profiles. If Err is not
+// nil, the list couldn't be fetched and the other fields are empty, such
+// as when tailscaled isn't running or the user isn't allowed to see it.
 type ProfileStatus struct {
 	Profile  ipn.LoginProfile
 	Profiles []ipn.LoginProfile
+	Err      error
 }
 
 func (*ProfileStatus) status() {}

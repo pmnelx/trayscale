@@ -19,10 +19,8 @@ import (
 	"deedles.dev/trayscale/internal/gutil"
 	"deedles.dev/trayscale/internal/listmodels"
 	"deedles.dev/trayscale/internal/locale"
-	"deedles.dev/trayscale/internal/metadata"
 	"deedles.dev/trayscale/internal/peersearch"
 	"deedles.dev/trayscale/internal/tsutil"
-	"tailscale.com/ipn"
 	"tailscale.com/tailcfg"
 )
 
@@ -58,6 +56,7 @@ type MainWindow struct {
 	PeersSidebar     *adw.ViewSwitcherSidebar
 	PeersStack       *adw.ViewStack
 	WorkSpinner      *adw.Spinner
+	ProfileStack     *gtk.Stack
 	ProfileDropDown  *gtk.DropDown
 	PageMenuButton   *gtk.MenuButton
 
@@ -67,11 +66,7 @@ type MainWindow struct {
 	peerQuery   string
 	ipn         *tsutil.IPNStatus
 
-	profiles         []ipn.LoginProfile
-	profileModel     *gtk.StringList
-	profileSortModel *gtk.SortListModel
-	updatingProfiles bool
-	activeProfileID  ipn.ProfileID
+	profiles profileSelector
 }
 
 func NewMainWindow(app *App) *MainWindow {
@@ -102,11 +97,7 @@ func NewMainWindow(app *App) *MainWindow {
 		win.PageMenuButton.SetSensitive(actions != nil)
 	})
 
-	win.profileModel = gtk.NewStringList(nil)
-	// gtk_sort_list_model_new takes ownership of the model and sorter.
-	win.profileModel.Ref()
-	win.profileSortModel = gtk.NewSortListModel(win.profileModel, &newStringSorter().Sorter)
-	win.ProfileDropDown.SetModel(win.profileSortModel)
+	win.initProfiles()
 
 	gutil.Connect(win.StatusSwitch, win.StatusSwitch.ConnectStateSet, func(_ gtk.Switch, s bool) bool {
 		if s == win.StatusSwitch.GetState() {
@@ -114,47 +105,6 @@ func NewMainWindow(app *App) *MainWindow {
 		}
 		win.setStatus(context.TODO(), s)
 		return true
-	})
-
-	gutil.ConnectNotify(win.ProfileDropDown, "selected-item", func() {
-		if win.updatingProfiles {
-			return
-		}
-
-		sel := win.ProfileDropDown.GetSelectedItem()
-		if sel == nil {
-			return
-		}
-		defer sel.Unref()
-		obj, ok := gutil.Cast[gtk.StringObject](sel, gtk.StringObjectGLibType())
-		if !ok {
-			return
-		}
-
-		item := obj.GetString()
-		index := slices.IndexFunc(win.profiles, func(p ipn.LoginProfile) bool {
-			// TODO: Find a reasonable way to do this by profile ID instead.
-			return p.Name == item
-		})
-		if index < 0 {
-			slog.Error("selected unknown profile", "name", item)
-			return
-		}
-		profile := win.profiles[index]
-
-		if profile.ID == win.activeProfileID {
-			return
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-
-		err := tsutil.SwitchProfile(ctx, profile.ID)
-		if err != nil {
-			slog.Error("failed to switch profiles", "err", err, "id", profile.ID, "name", profile.Name)
-			return
-		}
-		<-app.poller.Poll()
 	})
 
 	contentVariant := glib.NewVariantString("content").RefSink()
@@ -262,8 +212,7 @@ func (win *MainWindow) Dispose() {
 		vp.Unref()
 	}
 	clear(win.stackPages)
-	win.profileModel.Unref()
-	win.profileSortModel.Unref()
+	win.profiles.list.Unref()
 }
 
 func (win *MainWindow) Update(status tsutil.Status) {
@@ -590,36 +539,10 @@ func (win *MainWindow) applySections(layout []sidebarPage) {
 	}
 }
 
-func (win *MainWindow) updateProfiles(status *tsutil.ProfileStatus) {
-	win.updatingProfiles = true
-	defer func() { win.updatingProfiles = false }()
-
-	win.profiles = status.Profiles
-	win.activeProfileID = status.Profile.ID
-
-	listmodels.UpdateStrings(win.profileModel, func(yield func(string) bool) {
-		for _, profile := range status.Profiles {
-			name := profile.Name
-			if metadata.Private {
-				name = "profile@example.com"
-			}
-			if !yield(name) {
-				return
-			}
-		}
-	})
-
-	profileIndex, ok := listmodels.Index[gtk.StringObject](win.profileSortModel, gtk.StringObjectGLibType(), func(obj *gtk.StringObject) bool {
-		return obj.GetString() == status.Profile.Name
-	})
-	if ok {
-		win.ProfileDropDown.SetSelected(profileIndex)
-	}
-}
-
 func (win *MainWindow) Toast(msg string) {
 	toast := adw.NewToast(msg)
 	toast.SetTimeout(3)
+	toast.SetUseMarkup(false)        // msg can contain error text from the daemon.
 	win.ToastOverlay.AddToast(toast) // Takes ownership.
 }
 

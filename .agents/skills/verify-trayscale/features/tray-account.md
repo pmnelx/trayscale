@@ -5,7 +5,7 @@ The tray menu shows Switch account when Tailscale has more than one login profil
 ## Sub-features
 
 - `tray-switch-account` shows a Switch account submenu only when more than one profile exists.
-- `tray-account-radios` lists each profile as a radio item under that submenu.
+- `tray-account-radios` lists each profile as a radio item named `tailnet (account)` under that submenu.
 - `tray-account-private` shows each profile name as `profile@example.com` under `TRAYSCALE_PRIVATE=1`.
 
 ## How to get to it (user POV)
@@ -27,5 +27,6 @@ Preconditions:
 ## Gotchas
 
 - Isolated launch has no tray watcher, so the icon never registers.
+- The submenu is also removed while the profile list can't be read, such as when `tailscaled` is down.
 - A single login profile looks the same as a build with no account submenu. Check the profile count before calling the submenu missing.
 - The header profile combo is a different control. It is covered by `profile-private` in `main-window.md`.

@@ -19,6 +19,7 @@ import (
 	"codeberg.org/puregotk/puregotk/v4/gtk"
 	"deedles.dev/trayscale"
 	"deedles.dev/trayscale/internal/giofs"
+	"deedles.dev/trayscale/internal/gobj"
 	"deedles.dev/trayscale/internal/gutil"
 	"deedles.dev/trayscale/internal/locale"
 	"deedles.dev/trayscale/internal/tsutil"
@@ -81,9 +82,7 @@ func TestRestackReleasesReplacedStackPage(t *testing.T) {
 		stackPages: make(map[string]*adw.ViewStackPage),
 		PeersStack: adw.NewViewStack(),
 	}
-	win.profileModel = gtk.NewStringList(nil)
-	win.profileModel.Ref()
-	win.profileSortModel = gtk.NewSortListModel(win.profileModel, &newStringSorter().Sorter)
+	win.profiles.list = gobj.NewList(compareProfileItems)
 	aBox := gtk.NewBox(gtk.OrientationVerticalValue, 0)
 	bBox := gtk.NewBox(gtk.OrientationVerticalValue, 0)
 	pageA := &stackStub{w: &aBox.Widget}

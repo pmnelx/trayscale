@@ -268,3 +268,16 @@ func testStatus(ps *ipnstate.PeerStatus) *ipnstate.Status {
 		Peer: map[key.NodePublic]*ipnstate.PeerStatus{pub: ps},
 	}
 }
+
+func TestApplyInitialStatusSkipsPeerWithoutID(t *testing.T) {
+	var s IPNStatus
+	s.Prefs = new(ipn.Prefs).View()
+	s.applyInitialStatus(&ipnstate.Status{Peer: map[key.NodePublic]*ipnstate.PeerStatus{
+		key.NewNode().Public(): testPeerStatus("", 0, false, time.Time{}),
+		key.NewNode().Public(): testPeerStatus("n1", 1, false, time.Time{}),
+	}})
+
+	require.Len(t, s.Peers, 1)
+	require.Contains(t, s.Peers, tailcfg.StableNodeID("n1"))
+	require.False(t, s.ExitNode().Valid(), "a peer without an ID looks like the exit node when none is set")
+}

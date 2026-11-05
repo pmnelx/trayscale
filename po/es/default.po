@@ -359,3 +359,15 @@ msgstr "_Salir"
 
 msgid "_Set URL"
 msgstr "_Establecer URL"
+
+msgid "Switching..."
+msgstr "Cambiando..."
+
+msgid "Failed to switch profile: %v"
+msgstr "No se pudo cambiar de perfil: %v"
+
+msgid "Profiles are unavailable"
+msgstr "Los perfiles no están disponibles"
+
+msgid "Active"
+msgstr "Activo"
